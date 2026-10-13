@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+data/*.db
+data/*.db-journal
+.venv/
+venv/
+.env
+server.log
+data/cache/
+*.log
+server.err.log

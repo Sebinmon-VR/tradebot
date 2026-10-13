@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Movers · TradeBot</title>
+<script src="/static/theme.js"></script>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body data-page="movers">
+<div class="pg-head">
+  <div><h1 id="mv-title">2% movers</h1><p>Stocks under your capital that often move far enough in one session to pay the charges</p></div>
+  <div class="grow"></div>
+  <div class="sg" id="mv-target" aria-label="Target move"></div>
+  <button class="btn g" id="mv-scan" title="Point the ready-to-trade scanner at the top 40 movers">Scan these for trades</button>
+</div>
+<main class="pg">
+  <div class="card kpis" id="mv-kpis"></div>
+  <div class="note red" id="mv-note" hidden></div>
+  <div class="ptabs" id="mv-filter"></div>
+  <div id="mv-list"><div class="empty">Loading…</div></div>
+  <p class="fine">Reaches / falls: share of the last sessions in which the day's high went that far above the open, or the low that far below it (5-minute
+    candles). Range: the median day's high-to-low. Call: the ready-to-trade scanner's latest validated direction. Cost: an intraday round trip at your broker's charges for the
+    shares your capital buys, slippage included.</p>
+</main>
+<script src="/static/shell.js"></script>
+<script src="/static/movers.js"></script>
+</body>
+</html>

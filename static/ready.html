@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ready · TradeBot</title>
+<script src="/static/theme.js"></script>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body data-page="ready">
+<div class="pg-head">
+  <div><h1>Ready to trade</h1><p id="rd-sub">Stocks that pass every check right now</p></div>
+  <div class="grow"></div>
+  <select id="rd-universe" aria-label="Stocks to scan"></select>
+  <div class="sg" id="rd-interval" aria-label="Timeframe"></div>
+  <button class="btn" id="rd-rescan" title="Analyse every stock again now" aria-label="Rescan">↻</button>
+</div>
+<main class="pg">
+  <div class="card kpis" id="rd-kpis"></div>
+  <div class="note amber" id="rd-banner" hidden></div>
+  <div class="note" id="rd-hint" hidden></div>
+  <div class="ptabs" id="rd-tabs"></div>
+  <div id="rd-list"><div class="empty">Loading…</div></div>
+  <p class="fine">Every row ran the full system: 40 published strategies → a walk-forward learner that only calls a direction where out-of-sample calls of
+    that strength were right at least 55% of the time → a level-based plan with every broker charge. Chance = how often the target was reached first on
+    this stock's own history, tilted by today's forecast. Orders are paper trades.</p>
+</main>
+<script src="/static/shell.js"></script>
+<script src="/static/ready.js"></script>
+</body>
+</html>

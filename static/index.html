@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Chart · TradeBot</title>
+<script src="/static/theme.js"></script>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body data-page="chart">
+
+
+<div class="popover" id="pop-options" hidden>
+  <label>Exchange<select id="exchange"><option value="NSE" selected>NSE</option><option value="BSE">BSE</option></select></label>
+  <label>Horizon (bars ahead)<input id="horizon" type="number" min="1" max="200" value="16"></label>
+  <label>As of (blank = live)<input id="as-of" type="datetime-local" title="Analyze as if it were this date/time; the result is graded immediately against what actually happened"></label>
+  <label>Backtest points<input id="bt-steps" type="number" min="1" max="100" value="10"></label>
+  <button id="backtest-btn" class="btn" type="button" title="Run the analysis at N past points and grade each against real outcomes">Backtest</button>
+</div>
+<div class="popover" id="pop-overlays" hidden>
+  <div class="overlay-toggles" id="overlay-toggles">
+    <label><input type="checkbox" data-overlay="ema_9" checked> EMA 9</label>
+    <label><input type="checkbox" data-overlay="ema_21" checked> EMA 21</label>
+    <label><input type="checkbox" data-overlay="sma_50"> SMA 50</label>
+    <label><input type="checkbox" data-overlay="sma_200"> SMA 200</label>
+    <label><input type="checkbox" data-overlay="bb"> Bollinger</label>
+    <label><input type="checkbox" data-overlay="kc"> Keltner</label>
+    <label><input type="checkbox" data-overlay="supertrend" checked> Supertrend</label>
+    <label><input type="checkbox" data-overlay="psar"> PSAR</label>
+    <label><input type="checkbox" data-overlay="vwap_20"> VWAP</label>
+    <label><input type="checkbox" data-overlay="ichimoku"> Ichimoku</label>
+    <label title="Floor-trader pivot (P), R1-R3 / S1-S3 and the Central Pivot Range (TC / BC) from the previous session"><input type="checkbox" data-overlay="pivots" checked> Pivots + CPR</label>
+    <label title="Camarilla H3 / H4 (sell / breakout) and L3 / L4 (buy / breakdown)"><input type="checkbox" data-overlay="camarilla"> Camarilla</label>
+    <label><input type="checkbox" data-overlay="levels" checked> Target / Stop</label>
+  </div>
+  <div class="pane-tabs">
+    <button class="pane-tab active" data-pane="rsi">RSI</button>
+    <button class="pane-tab" data-pane="macd">MACD</button>
+    <button class="pane-tab" data-pane="adx">ADX</button>
+    <button class="pane-tab" data-pane="stoch">Stochastic</button>
+    <button class="pane-tab" data-pane="obv">OBV</button>
+    <button class="pane-tab" data-pane="cci">CCI</button>
+    <button class="pane-tab" data-pane="mfi">MFI</button>
+  </div>
+</div>
+
+<div class="cp">
+<div class="cp-left">
+<header class="topbar compact symbar">
+  <div class="brand"><span class="logo">◈</span><div class="brand-name">Chart</div></div>
+  <form id="analyze-form" class="controls" autocomplete="off">
+    <div class="field symbol-field">
+      <input id="symbol" type="text" placeholder="Symbol" value="RELIANCE" required>
+      <div id="suggest" class="suggest" hidden></div>
+    </div>
+    <select id="interval" title="Timeframe">
+      <option value="1m">1 min</option>
+      <option value="5m">5 min</option>
+      <option value="15m" selected>15 min</option>
+      <option value="30m">30 min</option>
+      <option value="1h">1 hour</option>
+      <option value="1d">Daily</option>
+      <option value="1wk">Weekly</option>
+    </select>
+    <button id="analyze-btn" class="btn primary" type="submit">Analyze</button>
+    <button type="button" class="btn tk-toggle" id="tk-toggle" title="Show the paper-order panel">Order ▾</button>
+    <label class="live-toggle" title="Re-run the analysis automatically whenever a bar closes">
+      <input type="checkbox" id="live"> <span class="live-dot"></span> Auto <span class="muted" id="live-countdown"></span>
+    </label>
+  </form>
+  <nav class="iconbar" id="iconbar">
+    <button type="button" class="ico" data-pop="options" title="Analysis options: horizon, as-of date, backtest">⚙︎</button>
+    <button type="button" class="ico" data-pop="overlays" title="Chart overlays and indicator pane">〰︎</button>
+    <button type="button" class="ico" data-drawer="signals" title="More: signals, indicators, history, accuracy, guide">☰</button>
+    <button type="button" class="ico" id="ico-learn" title="What the model learned and predicted">◉</button>
+    <a class="ico" href="/" title="Ready to trade: stocks that pass the whole system right now">★</a>
+    <a class="ico" href="/screener" title="Market map">▦</a>
+    <a class="ico" href="/overextended" title="Overextended: stocks that ran too far, too fast and may pull back">⤵</a>
+    <a class="ico" href="/portfolio" title="Portfolio, capital and fee settings">▣</a>
+  </nav>
+</header>
+<div id="status" class="status" hidden></div>
+<div class="tabstrip" id="tabstrip"></div>
+<section class="chart-card card">
+    <div class="card-head">
+      <div><span id="chart-title" class="title">—</span> <span id="chart-price" class="price"></span> <span id="chart-change" class="change"></span> <span id="chart-live" class="chart-live"></span></div>
+    </div>
+    <div class="chart-wrap"><div id="chart-main" class="chart-main"></div><div id="chart-msg" class="chart-msg" hidden></div></div>
+    <div id="chart-pane" class="chart-pane"></div>
+  </section>
+</div>
+<div class="cp-right">
+<aside class="prediction-card card" id="prediction-card">
+    <div class="pred-empty" id="pred-empty">Run an analysis to get a call.</div>
+    <div id="pred-body" hidden>
+      <div class="pred-head">
+        <div class="pred-dir" id="pred-dir">UP</div>
+        <div class="pred-meta">
+          <div id="pred-symbol" class="pred-symbol">—</div>
+          <div id="pred-horizon" class="muted">—</div>
+        </div>
+      </div>
+      <div class="prob-bar"><div class="prob-fill" id="prob-fill"></div><span class="prob-label" id="prob-label"></span></div>
+      <div class="pred-line"><span class="k">Validated</span><b id="pred-wf" title="Out-of-sample hit rate of calls at least this strong on this chart and timeframe">—</b><span id="pred-evidence" class="muted" title="strong / weak: calls beat simply following the drift; drift: reliable only because the market has been drifting one way; none: no validated edge">—</span></div>
+      <div class="pred-grid compact">
+        <div class="kv"><span class="k">Entry</span><span class="v" id="pred-entry">—</span></div>
+        <div class="kv"><span class="k">Target</span><span class="v" id="pred-target">—</span></div>
+        <div class="kv"><span class="k">Stop</span><span class="v" id="pred-stop">—</span></div>
+        <div class="kv"><span class="k">Risk : Reward</span><span class="v" id="pred-rr">—</span></div>
+      </div>
+      <div class="pred-now" id="pred-now" hidden></div>
+      <div class="trade-plan" id="trade-plan" hidden></div>
+      <div id="pred-eval" class="pred-eval" hidden></div>
+      <div class="pred-actions">
+        <button class="btn small" id="pred-more-btn">Details ▾</button>
+        <button class="btn small" id="btn-learn" title="What the model learned on this chart and how it arrived at this call">◉ Learning</button>
+        <button class="btn small" id="btn-feedback-now">Feedback</button>
+        <button class="btn small primary" id="btn-save-now" hidden>Save</button>
+        <span class="muted" id="pred-id"></span>
+      </div>
+      <div id="pred-more" hidden>
+        <div class="next-bar" id="next-bar"></div>
+        <div class="pred-edge" id="pred-edge" hidden></div>
+        <div class="pred-grid">
+          <div class="kv"><span class="k">Confidence</span><span class="v" id="pred-conf">—</span></div>
+          <div class="kv"><span class="k">Agreement</span><span class="v" id="pred-agree">—</span></div>
+          <div class="kv"><span class="k">Expected move</span><span class="v" id="pred-move">—</span></div>
+          <div class="kv"><span class="k">Valid until ≈</span><span class="v" id="pred-expires">—</span></div>
+          <div class="kv"><span class="k">Regime</span><span class="v" id="pred-regime">—</span></div>
+          <div class="kv"><span class="k">Bull / Bear score</span><span class="v" id="pred-scores">—</span></div>
+        </div>
+        <div class="cat-bars" id="cat-bars"></div>
+        <p class="disclaimer">Analytics for research and education only. Not investment advice. Markets can move against every indicator.</p>
+      </div>
+    </div>
+  </aside>
+<section class="card ticket" id="ticket">
+  <div class="tk-row">
+    <div class="tk-sym"><span class="k">Order</span><b id="tk-symbol">—</b><span id="tk-ltp" class="tk-ltp">—</span><span id="tk-chg" class="change"></span></div>
+    <div class="seg" id="tk-side"><button type="button" class="seg-btn buy active" data-v="BUY">BUY</button><button type="button" class="seg-btn sell" data-v="SELL">SELL</button></div>
+    <div class="seg" id="tk-product"><button type="button" class="seg-btn active" data-v="intraday" title="MIS: the broker squares off at 15:20 IST (₹50) if still open; short-selling allowed">Intraday</button><button type="button" class="seg-btn" data-v="overnight" title="CNC delivery: STT on both sides and a DP charge on the sell; no short-selling">Delivery</button></div>
+    <div class="seg" id="tk-type"><button type="button" class="seg-btn active" data-v="market">Market</button><button type="button" class="seg-btn" data-v="limit">Limit</button><button type="button" class="seg-btn" data-v="sl" title="Stop-loss order: becomes a market order when the trigger price trades">SL</button></div>
+    <label class="tk-field">Qty<input id="tk-qty" type="number" min="1" step="1" value="1"></label>
+    <label class="tk-field" id="tk-price-f" hidden>Price<input id="tk-price" type="number" step="0.05"></label>
+    <label class="tk-field" id="tk-trigger-f" hidden>Trigger<input id="tk-trigger" type="number" step="0.05"></label>
+    <label class="tk-field">Stop-loss<input id="tk-stop" type="number" step="0.05" placeholder="optional"></label>
+    <label class="tk-field">Target<input id="tk-target" type="number" step="0.05" placeholder="optional"></label>
+    <button type="button" class="btn small" id="tk-plan" title="Fill quantity, price, stop and target from the trade plan on the call card">From plan</button>
+    <button type="button" class="btn tk-place buy" id="tk-place">BUY</button>
+  </div>
+  <div class="tk-row tk-info"><span id="tk-preview" class="muted">Load a chart to place paper orders.</span><span id="tk-msg"></span></div>
+  <div class="tk-positions" id="tk-positions"></div>
+</section>
+</div>
+</div>
+
+<section class="drawer card" id="drawer" hidden>
+  <div class="drawer-head">
+    <div class="tabs">
+      <button class="tab active" data-tab="signals">Signals</button>
+      <button class="tab" data-tab="indicators">Indicators</button>
+      <button class="tab" data-tab="history">History &amp; Feedback</button>
+      <button class="tab" data-tab="accuracy">Accuracy</button>
+      <button class="tab" data-tab="guide">Strategy Guide</button>
+    </div>
+    <button class="close" id="drawer-close" title="Close">×</button>
+  </div>
+
+  <div class="tab-panel active" id="tab-signals">
+    <div class="panel-tools">
+      <span class="muted">Every strategy votes. Weight = base × regime × track record. <b>Learned</b> = the weight the walk-forward model gave this strategy on this chart (negative = it has been contrarian here). Click a row for details.</span>
+      <select id="signal-filter">
+        <option value="">All categories</option>
+        <option value="trend">Trend</option>
+        <option value="momentum">Momentum</option>
+        <option value="volatility">Volatility / Breakout</option>
+        <option value="volume">Volume</option>
+        <option value="price_action">Price action</option>
+        <option value="levels">Levels</option>
+        <option value="statistical">Statistical models</option>
+        <option value="ml">Machine learning</option>
+      </select>
+    </div>
+    <div class="table-wrap">
+      <table class="table" id="signals-table">
+        <thead><tr><th>Strategy</th><th>Category</th><th>Vote</th><th>Conf.</th><th>Weight</th><th>Learned</th><th>Track record</th><th>Reason</th></tr></thead>
+        <tbody><tr><td colspan="8" class="muted">No analysis yet.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-indicators">
+    <div class="ind-grid" id="ind-grid"><span class="muted">No analysis yet.</span></div>
+    <div class="levels-grid" id="levels-grid"></div>
+  </div>
+
+  <div class="tab-panel" id="tab-history">
+    <div class="panel-tools">
+      <div>
+        <input id="hist-symbol" type="text" placeholder="filter by symbol">
+        <select id="hist-status"><option value="">All</option><option value="pending">Pending</option><option value="resolved">Resolved</option></select>
+        <select id="hist-source"><option value="">Live + tests</option><option value="live">Live only</option><option value="asof">As-of tests</option><option value="backtest">Backtests</option></select>
+        <button class="btn small" id="hist-refresh">Refresh</button>
+        <button class="btn small" id="hist-resolve">Auto-evaluate due predictions</button>
+      </div>
+      <span class="muted">Mark each prediction correct / partial / incorrect. Your verdict overrides the system's and retrains strategy weights. <b>No call</b> = the system stood aside; it is not counted in accuracy.</span>
+    </div>
+    <div class="table-wrap">
+      <table class="table" id="history-table">
+        <thead><tr><th>#</th><th>When</th><th>Symbol</th><th>TF / Horizon</th><th>Call</th><th>P(up)</th><th>Entry → Target</th><th>Outcome</th><th>Your verdict</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-accuracy">
+    <div class="stat-tiles" id="stat-tiles"></div>
+    <h3>Per-strategy hit rate <span class="muted">(from evaluated predictions, including no-call bars; drives adaptive weights)</span></h3>
+    <div class="table-wrap">
+      <table class="table" id="strategy-stats-table">
+        <thead><tr><th>Strategy</th><th>Category</th><th>Evaluated</th><th>Correct</th><th>Incorrect</th><th>Accuracy</th><th>Weight ×</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <h3>Recent feedback</h3>
+    <div id="recent-feedback" class="feedback-list"></div>
+  </div>
+
+  <div class="tab-panel" id="tab-guide">
+    <div id="guide" class="guide"></div>
+  </div>
+</section>
+
+<!-- feedback modal -->
+<div id="modal" class="modal" hidden>
+  <div class="modal-box">
+    <div class="modal-head"><h3>Review prediction <span id="modal-title"></span></h3><button class="close" id="modal-close">×</button></div>
+    <div id="modal-summary" class="modal-summary"></div>
+    <div class="verdicts">
+      <button class="verdict ok" data-verdict="correct">✔ Correct</button>
+      <button class="verdict mid" data-verdict="partial">~ Partially</button>
+      <button class="verdict bad" data-verdict="incorrect">✘ Incorrect</button>
+    </div>
+    <div class="stars" id="stars">
+      <span data-star="1">★</span><span data-star="2">★</span><span data-star="3">★</span><span data-star="4">★</span><span data-star="5">★</span>
+      <span class="muted" id="star-label">rate usefulness</span>
+    </div>
+    <textarea id="fb-note" rows="3" placeholder="What actually happened? Which strategies were right or wrong? (optional)"></textarea>
+    <div class="modal-actions">
+      <button class="btn" id="modal-cancel">Cancel</button>
+      <button class="btn primary" id="modal-save" disabled>Save feedback</button>
+    </div>
+  </div>
+</div>
+
+<!-- detail modal -->
+<div id="detail" class="modal" hidden>
+  <div class="modal-box wide">
+    <div class="modal-head"><h3 id="detail-title">Details</h3><button class="close" id="detail-close">×</button></div>
+    <div id="detail-body" class="detail-body"></div>
+  </div>
+</div>
+
+<!-- learning pop-up -->
+<div id="learn" class="modal" hidden>
+  <div class="modal-box learn">
+    <div class="modal-head"><h3 id="learn-title">Learning &amp; prediction</h3><button class="close" id="learn-close">×</button></div>
+    <div id="learn-body" class="learn-body"></div>
+  </div>
+</div>
+
+<script src="/static/shell.js"></script>
+<script src="/static/vendor/lightweight-charts.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

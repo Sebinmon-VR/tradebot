@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Profit model · TradeBot</title>
+<script src="/static/theme.js"></script>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body data-page="profit">
+<div class="pg-head">
+  <div><h1>Profit model</h1><p>Independent and report-only: learns “would this trade have made money after charges?”. It never changes calls, plans or trades.</p></div>
+  <div class="grow"></div>
+  <span class="pill" id="pm-status">—</span>
+</div>
+<main class="pg">
+  <div class="card pm-meter" id="pm-meter"><div class="empty">Loading…</div></div>
+  <div class="note" id="pm-note" hidden></div>
+  <div class="ptabs" id="pm-tabs"></div>
+  <div id="pm-body"></div>
+  <p class="fine">Triple-barrier replay (López de Prado, <i>Advances in Financial Machine Learning</i>, 2018): every past bar becomes a trade entered on the next
+    bar's open, closed at the target (1.5 × ATR), the stop (1 × ATR, assumed first when one bar touches both), 16 bars or 15:10 IST, net of your broker's
+    charges and slippage. Logistic regression + gradient boosting, validated walk-forward on bars they never trained on. Research only, not investment advice.</p>
+</main>
+<script src="/static/shell.js"></script>
+<script src="/static/profit.js"></script>
+</body>
+</html>

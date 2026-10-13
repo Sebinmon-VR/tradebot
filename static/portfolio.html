@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Portfolio · TradeBot</title>
+<script src="/static/theme.js"></script>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body data-page="portfolio">
+<div class="pg-head">
+  <div><h1>Portfolio</h1><p>Paper trades · every broker charge included</p></div>
+  <div class="grow"></div>
+  <button class="btn" id="check" title="Fill pending orders and exit open trades against the latest prices now">Check exits now</button>
+  <a class="btn" href="#settings" id="open-settings">Capital &amp; fees</a>
+</div>
+<main class="pg">
+  <div id="status" class="status" hidden></div>
+  <div class="card kpis" id="kpis"></div>
+  <div class="pf">
+    <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+      <div class="sec-h">Open positions <span class="n" id="n-open">0</span><small id="open-meta"></small></div>
+      <div id="open"></div>
+      <div class="sec-h">Pending orders <span class="n" id="n-pending">0</span></div>
+      <div id="pending"></div>
+      <div class="sec-h">Closed trades <span class="n" id="n-closed">0</span></div>
+      <div id="closed"></div>
+    </div>
+    <div class="side">
+      <div class="card"><div class="sec-h" style="margin:0 0 8px">Equity <small id="eq-ret"></small></div><div id="equity-chart" class="eq-chart"></div></div>
+      <div class="card" id="stats"></div>
+      <div class="card" id="settings">
+        <div class="sec-h" style="margin:0 0 12px">Capital, risk and charges</div>
+        <form id="settings-form" class="settings-form" autocomplete="off">
+          <label>Broker<select name="broker" id="broker"></select></label>
+          <label>Capital (₹)<input name="capital" type="number" min="100" step="100"></label>
+          <label>Risk per trade (%)<input name="risk_pct" type="number" min="0.1" max="20" step="0.1"></label>
+          <label>Max open positions<input name="max_positions" type="number" min="1" max="20" step="1"></label>
+          <label>Leverage (1 = cash)<input name="leverage" type="number" min="1" max="5" step="0.5"></label>
+          <label>Plan exit (IST)<input name="intraday_exit" type="text" pattern="[0-9]{2}:[0-9]{2}"></label>
+          <label>Square-off (IST)<input name="squareoff_time" type="text" pattern="[0-9]{2}:[0-9]{2}"></label>
+          <label>Min trade value (₹)<input name="min_trade_value" type="number" min="0" step="100"></label>
+          <label>Max charges share<input name="max_cost_share" type="number" min="0.05" max="1" step="0.05"></label>
+          <label class="check"><input name="allow_overnight" type="checkbox"> Allow delivery holds</label>
+          <details style="grid-column:1/-1"><summary class="muted" style="cursor:pointer;font-size:13px">Broker charges (<span id="fee-broker">Zerodha</span>)</summary>
+            <div class="settings-form" style="margin-top:10px">
+              <label>Intraday brokerage % / order<input name="fees.brokerage_pct" type="number" min="0" step="0.01"></label>
+              <label>Intraday brokerage cap (₹)<input name="fees.brokerage_cap" type="number" min="0" step="1"></label>
+              <label>Intraday brokerage min (₹)<input name="fees.brokerage_min" type="number" min="0" step="1"></label>
+              <label>Delivery brokerage % / order<input name="fees.brokerage_delivery_pct" type="number" min="0" step="0.01"></label>
+              <label>Delivery brokerage cap (₹)<input name="fees.brokerage_delivery_cap" type="number" min="0" step="1"></label>
+              <label>Delivery brokerage min (₹)<input name="fees.brokerage_delivery_min" type="number" min="0" step="1"></label>
+              <label>STT delivery %<input name="fees.stt_delivery_pct" type="number" min="0" step="0.001"></label>
+              <label>STT intraday % (sell)<input name="fees.stt_intraday_sell_pct" type="number" min="0" step="0.001"></label>
+              <label>Stamp delivery %<input name="fees.stamp_delivery_pct" type="number" min="0" step="0.001"></label>
+              <label>Stamp intraday %<input name="fees.stamp_intraday_pct" type="number" min="0" step="0.001"></label>
+              <label>Exchange %<input name="fees.exchange_pct" type="number" min="0" step="0.00001"></label>
+              <label>SEBI %<input name="fees.sebi_pct" type="number" min="0" step="0.00001"></label>
+              <label>IPFT %<input name="fees.ipft_pct" type="number" min="0" step="0.00001"></label>
+              <label>GST %<input name="fees.gst_pct" type="number" min="0" step="1"></label>
+              <label>DP charge (₹)<input name="fees.dp_charge" type="number" min="0" step="0.5"></label>
+              <label>DP waived below (₹)<input name="fees.dp_waive_below" type="number" min="0" step="10"></label>
+              <label>Auto square-off (₹)<input name="fees.auto_squareoff" type="number" min="0" step="1"></label>
+              <label>Slippage % / side<input name="fees.slippage_pct" type="number" min="0" step="0.01"></label>
+            </div></details>
+        </form>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px">
+          <button class="btn g" id="save">Save</button><button class="btn" id="reset">Reset to defaults</button>
+          <span class="muted" id="settings-msg" style="font-size:12px">Applies to the next plan; open trades keep their recorded charges.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="fine">Paper trading on real prices with modelled fills and your broker's published charges. Not investment advice.</p>
+</main>
+<script src="/static/shell.js"></script>
+<script src="/static/vendor/lightweight-charts.js"></script>
+<script src="/static/portfolio.js"></script>
+</body>
+</html>

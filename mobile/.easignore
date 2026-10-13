@@ -1,0 +1,11 @@
+# files EAS Build does not need to upload
+node_modules/
+.expo/
+dist/
+web-build/
+tests/
+*.log
+.DS_Store
+android/
+ios/
+*.hbc.map

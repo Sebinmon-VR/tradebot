@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Overextended · Trading Analytics</title>
+<script src="/static/theme.js"></script>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body data-page="today">
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">◈</span>
+    <div><div class="brand-name">Overextended</div><div class="brand-sub">stocks that ran too far, too fast · published overbought and exhaustion rules · what each stock did after its previous episodes</div></div>
+  </div>
+  <div class="controls">
+    <div class="field">
+      <label>View</label>
+      <select id="mode" title="Today: how far each stock has run from this session's open (5-minute bars). Multi-day: overbought on daily bars.">
+        <option value="today" selected>Today · run from the open</option>
+        <option value="daily">Multi-day · daily bars</option>
+      </select>
+    </div>
+    <div class="field" id="side-field">
+      <label>Direction</label>
+      <select id="side" title="Up: ran too far above today's open. Down: fell too far below it.">
+        <option value="up" selected>▲ Ran up from the open</option>
+        <option value="down">▼ Fell from the open</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Universe</label>
+      <select id="universe"></select>
+    </div>
+    <div class="field">
+      <label>Show from score</label>
+      <select id="min-score" title="The score adds up published overbought / exhaustion rules (0-100)"></select>
+    </div>
+    <div class="field">
+      <label>Analyze with interval</label>
+      <select id="interval">
+        <option value="5m">5 min</option>
+        <option value="15m" selected>15 min</option>
+        <option value="30m">30 min</option>
+        <option value="1h">1 hour</option>
+        <option value="1d">Daily</option>
+      </select>
+    </div>
+    <div class="field symbol-field">
+      <label>My watchlist <span class="muted">(comma separated, scanned too)</span></label>
+      <input id="watchlist" type="text" placeholder="e.g. PCJEWELLER, IRCTC, ZOMATO">
+    </div>
+    <button class="btn primary" id="refresh">Refresh</button>
+    <label class="live-toggle" title="Rescan every 2 minutes"><input type="checkbox" id="auto"> <span class="live-dot"></span> Auto <span class="muted" id="auto-countdown"></span></label>
+    <a class="btn nav-link" href="/">★ Ready to trade</a>
+    <a class="btn nav-link" href="/chart">Chart →</a>
+    <a class="btn nav-link" href="/screener" title="Market map">▦ Map</a>
+  </div>
+</header>
+
+<div id="status" class="status" hidden></div>
+
+<section class="card ext-summary" id="summary"><span class="muted">Scanning…</span></section>
+
+<section class="card screener-card">
+  <div class="panel-tools">
+    <div class="chips" id="chips-today">
+      <button class="chip active" data-sort="peak" data-up="Biggest run today" data-down="Biggest fall today" title="Highest score reached today">Biggest run today</button>
+      <button class="chip" data-sort="fading" data-up="Fading first" data-down="Bouncing first" title="Reached 35+ and has already given back half of the move">Fading first</button>
+      <button class="chip" data-sort="now" title="Score right now">Most stretched now</button>
+      <button class="chip" data-sort="chg_open">Most % from open</button>
+      <button class="chip" data-sort="vwap_z" data-up="Furthest above VWAP" data-down="Furthest below VWAP">Furthest above VWAP</button>
+      <button class="chip" data-sort="rvol">Volume climax</button>
+    </div>
+    <div class="chips" id="chips" hidden>
+      <button class="chip active" data-sort="score">Most stretched</button>
+      <button class="chip" data-sort="reversal">Reversal signs first</button>
+      <button class="chip" data-sort="record">Best pullback record</button>
+      <button class="chip" data-sort="chg_20d">Biggest 20-day run</button>
+      <button class="chip" data-sort="rsi14">Highest RSI</button>
+      <button class="chip" data-sort="stretch20">Furthest from SMA20</button>
+      <button class="chip" data-sort="vol_ratio">Volume climax</button>
+    </div>
+    <div class="view-tools">
+      <input id="search" type="text" placeholder="filter symbols…"> <span class="muted" id="meta"></span>
+    </div>
+  </div>
+  <div class="xgrid" id="cards"><div class="muted">Loading…</div></div>
+</section>
+
+<section class="card rules-card">
+  <details>
+    <summary>How the score is built, and how to read it</summary>
+    <div class="rules-body" id="rules-today">
+      <p>The <b>Today</b> view scores every 5-minute bar of the session from 0 to 100 with six published intraday rules. A rule contributes nothing until it triggers and its full weight at an extreme reading. It only scores while the price is above today's open. Each card shows the <b>peak</b> the score reached today, when that was, and the score <b>now</b>. Tiers use the peak: <b>stretched</b> = 50+, <b>extended</b> = 35-49, <b>warming up</b> = 25-34. Over 60 days of 5-minute bars a session peaked at 35+ on about 4% of stock-days (4 names a day in the NIFTY 100, 8 in the mid/small caps) and at 50+ on about 1%.</p>
+      <div id="rules-list-today" class="rules-list"></div>
+      <p><b>What the data says about fading these moves.</b> A stock far above its open is <i>not</i> by itself likely to close lower: in the same 60 days, after the score first crossed 35 the stock closed below that price only about 53% of the time, and the ones still pushing (2+ ATR from the open, or a score of 50+) closed higher about as often as lower, because many big moves from the open are trend days. The one version that held up in both halves of the sample: the stock reached 35+ and has then <b>given back half or more of its run from the open</b>. About 63% of those closed lower still, but the average move to the close was only about -0.3%, less than a round trip of costs on a small position. Those cards are marked <span class="badge bad">fading</span>. Each card also shows the stock's own record over the last 60 sessions, and the summary at the top shows the pooled record recomputed on every scan.</p>
+      <p id="down-note" hidden><b>Falling stocks (Direction ▼).</b> The same six rules run on the mirror image: ATR below the open, sigma below VWAP, through yesterday's S1 / S2 / S3, 5-minute RSI below 30, a volume climax, and the share of the fall already recovered from the low. Tested the same way on the same 60 days (NIFTY 100 + mid/small caps): after the score first crossed 35 the stock closed <i>higher</i> only about 47% of the time; stocks that had already recovered half the fall closed higher about 52%; very low RSI and heavy volume did no better, and none of these held up across both halves of the sample. Big drops before 11:00 leaned the other way (about 43% closed higher, average -0.4% further) but the two halves disagreed. So this list shows who is falling hard today; it does not say they will bounce.</p>
+      <p class="muted">Analytics for research and education only, not investment advice. Intraday shorting is MIS only and is squared off by the broker before the close.</p>
+    </div>
+    <div class="rules-body" id="rules-daily" hidden>
+      <p>Each card's score (0-100) adds up ten published overbought and exhaustion rules computed on daily bars. A rule contributes nothing until it triggers and its full weight at an extreme reading, so a 70 means several rules are near their extremes at once. <b>Stretched</b> = 50 and above, <b>extended</b> = 35-49, <b>warming up</b> = 20-34; the tiers were set from two years of NIFTY 100 daily bars so that a score of 20+ appears on about six names a day, 35+ on two and 50+ on fewer than one.</p>
+      <div id="rules-list" class="rules-list"></div>
+      <p>Being stretched is a statement about the next few <i>sessions</i>, not the trend: the momentum research (Jegadeesh &amp; Titman 1993; George &amp; Hwang 2004) finds that strong stocks keep going for months, while the short-term work (Connors, Bollinger) finds that the sessions right after an extreme tend to give some of it back. So every card also shows the stock's own record: each time in the last two years its score crossed 35, was it lower five sessions later, by how much on average, and how deep was the typical dip within ten sessions - next to the unconditional base rate (how often <i>any</i> bar of that stock closed lower five sessions later). A record clearly above the base rate means the stock has actually pulled back after such runs; a record below it means it has tended to keep running, and the stretch alone is not a reason to sell it or short it.</p>
+      <p class="muted">Analytics for research and education only, not investment advice. Click <b>Analyze</b> on a card to run the full walk-forward model on that chart before acting on anything here.</p>
+    </div>
+  </details>
+</section>
+
+<script src="/static/shell.js"></script>
+<script src="/static/overextended.js"></script>
+</body>
+</html>

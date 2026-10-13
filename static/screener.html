@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Market Map · Trading Analytics</title>
+<script src="/static/theme.js"></script>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body data-page="map">
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">◈</span>
+    <div><div class="brand-name">Market Map</div><div class="brand-sub">every stock is a tile · colour = movement · size = market cap · click a tile to analyze it</div></div>
+  </div>
+  <div class="controls">
+    <div class="field">
+      <label>Universe</label>
+      <select id="universe"></select>
+    </div>
+    <div class="field">
+      <label>Analyze with interval</label>
+      <select id="interval">
+        <option value="5m">5 min</option>
+        <option value="15m" selected>15 min</option>
+        <option value="30m">30 min</option>
+        <option value="1h">1 hour</option>
+        <option value="1d">Daily</option>
+      </select>
+    </div>
+    <div class="field symbol-field">
+      <label>My watchlist <span class="muted">(comma separated, added to the map)</span></label>
+      <input id="watchlist" type="text" placeholder="e.g. PCJEWELLER, IRCTC, ZOMATO">
+    </div>
+    <button class="btn primary" id="refresh">Refresh</button>
+    <label class="live-toggle" title="Refresh every 60 seconds"><input type="checkbox" id="auto"> <span class="live-dot"></span> Auto <span class="muted" id="auto-countdown"></span></label>
+    <a class="btn nav-link" href="/overextended" title="Stocks that ran too far, too fast">⤵ Overextended</a>
+    <a class="btn nav-link" href="/">★ Ready to trade</a>
+    <a class="btn nav-link" href="/chart">Chart →</a>
+  </div>
+</header>
+
+<div id="status" class="status" hidden></div>
+
+<section class="card index-strip" id="indices"></section>
+
+<section class="card screener-card">
+  <div class="panel-tools">
+    <div class="chips" id="chips">
+      <button class="chip active" data-filter="all">All</button>
+      <button class="chip" data-filter="gainers">Top gainers</button>
+      <button class="chip" data-filter="losers">Top losers</button>
+      <button class="chip" data-filter="active">Most active (volume)</button>
+      <button class="chip" data-filter="volatile">Most volatile (range)</button>
+      <button class="chip" data-filter="quiet">Least movement</button>
+      <button class="chip" data-filter="gap">Big gaps</button>
+      <button class="chip" data-filter="oversold">Oversold (RSI &lt; 30)</button>
+      <button class="chip" data-filter="overbought">Overbought (RSI &gt; 70)</button>
+      <button class="chip" data-filter="overextended" title="Score 20+ on the published overbought / exhaustion rules; the Overextended page has the ranked list with reasons">Overextended ⤵</button>
+      <button class="chip" data-filter="high52">Near 52-wk high</button>
+      <button class="chip" data-filter="low52">Near 52-wk low</button>
+      <button class="chip" data-filter="bull">Bullish trend</button>
+      <button class="chip" data-filter="bear">Bearish trend</button>
+    </div>
+    <div class="view-tools">
+      <div class="seg" id="view-toggle">
+        <button class="seg-btn active" data-view="map" title="Heat-map of tiles">▦ Map</button>
+        <button class="seg-btn" data-view="table" title="Sortable table">☰ Table</button>
+      </div>
+      <input id="search" type="text" placeholder="filter symbols…"> <span class="muted" id="meta"></span>
+    </div>
+  </div>
+
+  <div class="map-tools" id="map-tools">
+    <label>Colour by
+      <select id="color-by">
+        <option value="chg_1d" selected>Day %</option>
+        <option value="gap">Gap %</option>
+        <option value="chg_5d">5-day %</option>
+        <option value="chg_20d">20-day %</option>
+        <option value="rsi">RSI 14</option>
+        <option value="pos_52w">52-week position</option>
+        <option value="bias">Trend bias</option>
+        <option value="vol_ratio">Volume × 20-day avg</option>
+        <option value="range_pct">Day range %</option>
+        <option value="atr_pct">ATR %</option>
+        <option value="ext_score">Overextension score</option>
+      </select>
+    </label>
+    <label>Size by
+      <select id="size-by">
+        <option value="market_cap" selected>Market cap</option>
+        <option value="turnover">Turnover (₹ traded today)</option>
+        <option value="volume">Volume</option>
+        <option value="equal">Equal</option>
+      </select>
+    </label>
+    <label>Group by
+      <select id="group-by">
+        <option value="sector" selected>Sector</option>
+        <option value="none">None</option>
+      </select>
+    </label>
+    <div class="legend" id="legend"></div>
+  </div>
+  <div class="map" id="map"><div class="muted map-empty">Loading…</div></div>
+
+  <div class="table-wrap" id="table-wrap" hidden>
+    <table class="table screener" id="table">
+      <thead><tr>
+        <th data-sort="name">Symbol</th>
+        <th data-sort="sector">Sector</th>
+        <th data-sort="price" class="num">Price</th>
+        <th data-sort="chg_1d" class="num">Day %</th>
+        <th data-sort="gap" class="num">Gap %</th>
+        <th data-sort="chg_5d" class="num">5d %</th>
+        <th data-sort="chg_20d" class="num">20d %</th>
+        <th data-sort="range_pct" class="num">Range %</th>
+        <th data-sort="vol_ratio" class="num">Vol ×avg</th>
+        <th data-sort="rsi" class="num">RSI</th>
+        <th data-sort="atr_pct" class="num">ATR %</th>
+        <th data-sort="pos_52w" class="num">52-wk pos</th>
+        <th data-sort="market_cap" class="num">Mkt cap</th>
+        <th data-sort="bias" class="num">Trend</th>
+        <th data-sort="ext_score" class="num" title="Overextension score 0-100 from published overbought / exhaustion rules (Overextended page)">Stretch</th>
+        <th></th>
+      </tr></thead>
+      <tbody><tr><td colspan="16" class="muted">Loading…</td></tr></tbody>
+    </table>
+  </div>
+</section>
+
+<div class="map-tip" id="tip" hidden></div>
+
+<script src="/static/shell.js"></script>
+<script src="/static/screener.js"></script>
+</body>
+</html>

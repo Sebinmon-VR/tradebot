@@ -107,7 +107,13 @@ def write_state(state: dict) -> None:
     tmp = STATE_FILE + ".tmp"
     with open(tmp, "w", encoding="utf-8") as fh:
         json.dump(state, fh, default=str)
-    os.replace(tmp, STATE_FILE)
+    for attempt in range(20):
+        try:
+            os.replace(tmp, STATE_FILE)
+            return
+        except PermissionError:                # Windows: the server is reading the file this instant
+            time.sleep(0.1)
+    log.warning("state file busy; this update is skipped (the next one will land)")
 
 
 def read_state() -> dict:

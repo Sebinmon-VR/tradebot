@@ -27,6 +27,35 @@ from .data import bar_is_forming  # noqa: E402
 
 log = logging.getLogger("tradebot.profit")
 SERVER_GONE = 600          # seconds without a reply from the server before the worker exits
+PARENT = int(os.environ.get("TRADEBOT_PARENT_PID") or 0)   # the server process that launched this worker
+CHECK_EVERY = 15           # seconds between "is the server process still there?" checks while waiting
+
+
+class ServerGone(Exception):
+    pass
+
+
+def parent_alive() -> bool:
+    """False once the server process that started this worker has ended (window closed, Ctrl+C, crash)."""
+    if not PARENT:
+        return True                            # started by hand: rely on SERVER_GONE instead
+    if os.name == "nt":
+        import ctypes
+        k32 = ctypes.windll.kernel32
+        h = k32.OpenProcess(0x00100000, False, PARENT)      # SYNCHRONIZE
+        if not h:
+            return False
+        try:
+            return k32.WaitForSingleObject(h, 0) == 0x102   # WAIT_TIMEOUT: still running
+        finally:
+            k32.CloseHandle(h)
+    try:
+        os.kill(PARENT, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
 MARKET_SYMBOL = "^NSEI"
 
 
@@ -145,6 +174,8 @@ class Worker:
         self.save(running=True, total=len(symbols), done=0, pass_started=pm.now_iso(), error=None, interval=interval,
                   broker=settings["fees"].get("broker"))
         for i, sym in enumerate(symbols):
+            if not parent_alive():
+                raise ServerGone()
             self.save(current=sym, done=i)
             try:
                 self.one(sym, interval, market, settings, bool(u.get("market_open")))
@@ -177,8 +208,9 @@ def main() -> int:
     w = Worker(Server(url, token))
     log.info("profit worker %d started against %s", os.getpid(), url)
     last_ok = time.time()
+    paused = os.path.join(pm.CACHE_DIR, "paused")
     while True:
-        if os.path.exists(os.path.join(pm.CACHE_DIR, "paused")):
+        if os.path.exists(paused):
             log.info("paused (data/cache/profit/paused exists); exiting")
             w.save(running=False, error="paused")
             return 0
@@ -186,7 +218,11 @@ def main() -> int:
             u = w.scan()
             last_ok = time.time()
             wait = float(u.get("next_scan_in") or 1800)
-        except (urllib.error.URLError, ConnectionError, TimeoutError, OSError) as exc:
+        except ServerGone:
+            log.info("the server has stopped; exiting")
+            w.save(running=False, current=None, error="stopped with the server")
+            return 0
+        except (urllib.error.URLError, ConnectionError, TimeoutError) as exc:
             if time.time() - last_ok > SERVER_GONE:
                 log.info("server unreachable for %ds (%s); exiting", SERVER_GONE, exc)
                 return 0
@@ -196,7 +232,15 @@ def main() -> int:
             log.exception("profit scan failed")
             w.save(running=False, error=str(exc))
             wait = 120
-        time.sleep(max(15.0, min(wait, 1800.0)))
+        end = time.time() + max(15.0, min(wait, 1800.0))
+        while time.time() < end:                 # sleep in short steps so closing the app stops the worker quickly
+            if not parent_alive():
+                log.info("the server has stopped; exiting")
+                w.save(running=False, current=None, error="stopped with the server")
+                return 0
+            if os.path.exists(paused):
+                break
+            time.sleep(min(CHECK_EVERY, max(0.0, end - time.time())))
 
 
 if __name__ == "__main__":

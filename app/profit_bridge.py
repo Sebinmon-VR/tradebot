@@ -58,6 +58,7 @@ def start() -> None:
         return
     try:
         env = {**os.environ, "TRADEBOT_PROFIT_TOKEN": TOKEN, "TRADEBOT_PROFIT_URL": f"http://127.0.0.1:{_port()}",
+               "TRADEBOT_PARENT_PID": str(os.getpid()),
                "OMP_NUM_THREADS": "1", "OPENBLAS_NUM_THREADS": "1", "MKL_NUM_THREADS": "1"}
         kw = {"cwd": os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "env": env,
               "stdin": subprocess.DEVNULL, "stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL}
